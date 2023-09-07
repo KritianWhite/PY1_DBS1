@@ -1,0 +1,25 @@
+services: 
+  votaciones_mysqldb:
+    restart: on-failure
+    container_name: votaciones_mysqldb
+    command: --default-authentication-plugin=mysql_native_password --sql_mode=""
+    image: mysql:latest
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_DATABASE=votaciones_db
+    ports:
+      - "3307:3306"
+    networks:
+      - votaciones_net
+    volumes:
+      - votaciones-mysql-vol:/var/lib/mysql
+      - ./database/database_init.sql:/docker-entrypoint-initdb.d/database_init.sql
+
+networks:
+  votaciones_net:
+    driver: bridge
+
+volumes:
+  votaciones-mysql-vol:
