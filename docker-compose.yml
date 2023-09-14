@@ -10,7 +10,7 @@ services:
       - MYSQL_PASSWORD=admin
       - MYSQL_DATABASE=votaciones_db
     ports:
-      - "3307:3306"
+      - "3306:3306"
     networks:
       - votaciones_net
     volumes:
