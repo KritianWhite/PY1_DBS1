@@ -1,0 +1,22 @@
+<div>
+    <h2>Cargar archivo CSV o Excel</h2>
+    <input type="file" (change)="onFileSelected($event)" accept=".csv, .xlsx" />
+    <br /><br />
+
+    <app-tabla *ngFor="let data of csvDataArray" [fileData]="data.fileData" [tableHeaders]="data.tableHeaders"></app-tabla>
+    <!-- <div *ngIf="fileData.length > 0">
+        <h3>Contenido del archivo:</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th *ngFor="let header of tableHeaders">{{ header }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let row of fileData">
+                    <td *ngFor="let cell of row">{{ cell }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div> -->
+</div>
