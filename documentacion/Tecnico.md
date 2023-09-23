@@ -1,7 +1,268 @@
-from flask import Flask, jsonify, request
+# Manual Técnico - Sistema de Gestión Electoral
+
+## Introducción
+Este manual técnico describe las funciones y características de un sistema de gestión electoral implementado en Python con una base de datos MySQL. El sistema se encarga de gestionar información relacionada con candidatos, votaciones, ciudadanos y otros elementos relevantes para un proceso electoral.
+
+## Requisitos Previos
+Asegúrate de tener los siguientes requisitos previos configurados antes de ejecutar el sistema:
+
+- **Python:** El sistema está implementado en Python, por lo que debes tener Python instalado en tu entorno de desarrollo.
+
+- **MySQL:** Se utiliza MySQL como sistema de gestión de bases de datos. Debes tener un servidor MySQL configurado y funcionando correctamente.
+
+- **Conector MySQL para Python:** Debes instalar el paquete `mysql-connector-python`, que permite interactuar con la base de datos MySQL desde Python. Puedes instalarlo usando pip:
+
+pip install mysql-connector-python
+
+- **Variables de Entorno:** El sistema utiliza variables de entorno para almacenar información sensible como las credenciales de la base de datos. Crea un archivo `.env` en el directorio raíz del proyecto y configura las siguientes variables de entorno:
+
+```makefile
+DATABASE_HOST=nombre_del_servidor_de_la_base_de_datos
+DATABASE_USER=nombre_de_usuario_de_la_base_de_datos
+DATABASE_PASSWORD=contraseña_de_la_base_de_datos
+DATABASE_NAME=nombre_de_la_base_de_datos
+DATABASE_PORT=puerto_de_la_base_de_datos
+```
+
+## Tablas de la Base de Datos
+
+### 1. Tabla CARGO
+
+La tabla `CARGO` almacena información sobre los cargos electorales que están en juego en una elección. Cada cargo tiene un identificador único (`id_cargo`) y un nombre (`cargo`) que describe el puesto.
+
+```sql
+CREATE TABLE CARGO (
+    id_cargo INTEGER NOT NULL PRIMARY KEY,
+    cargo VARCHAR(50) NOT NULL
+);
+```
+
+### 2. Tabla PARTIDO
+
+La tabla PARTIDO almacena información sobre los partidos políticos que participan en una elección. Cada partido tiene un identificador único (id_partido), un nombre (nombre_partido), siglas (siglas), y la fecha de fundación (fundacion) del partido.
+
+```sql
+CREATE TABLE PARTIDO (
+    id_partido INTEGER NOT NULL PRIMARY KEY,
+    nombre_partido VARCHAR(75) NOT NULL,
+    siglas VARCHAR(15) NOT NULL,
+    fundacion DATE NOT NULL
+);
+```
+
+### 3. Tabla DEPARTAMENTO
+
+La tabla DEPARTAMENTO almacena información sobre los departamentos geográficos en una región o país. Cada departamento tiene un identificador único (id_departamento) y un nombre (nombre) que representa su nombre geográfico.
+
+```sql
+CREATE TABLE DEPARTAMENTO (
+    id_departamento INTEGER NOT NULL PRIMARY KEY,
+    nombre VARCHAR(25) NOT NULL
+);
+```
+
+### 4. Tabla MESA
+
+La tabla MESA almacena información sobre las mesas de votación. Cada mesa de votación tiene un identificador único (id_mesa) y está asociada a un departamento (id_departamento) utilizando una clave foránea (FOREIGN KEY).
+
+```sql
+CREATE TABLE MESA (
+    id_mesa INTEGER NOT NULL PRIMARY KEY,
+    id_departamento INTEGER,
+    FOREIGN KEY (id_departamento) REFERENCES DEPARTAMENTO (id_departamento)
+);
+```
+
+### 5. Tabla CIUDADANO
+
+La tabla CIUDADANO almacena información sobre los votantes o ciudadanos. Cada ciudadano tiene un número de DPI (Documento Personal de Identificación) único (dpi_ciudadano), nombre (nombre), apellido (apellido), dirección (direccion), número de teléfono (telefono), edad (edad), y género (genero).
+
+```sql
+CREATE TABLE CIUDADANO (
+    dpi_ciudadano BIGINT NOT NULL PRIMARY KEY,
+    nombre VARCHAR(15) NOT NULL,
+    apellido VARCHAR(15) NOT NULL,
+    direccion VARCHAR(250) NOT NULL,
+    telefono INTEGER NOT NULL,
+    edad INTEGER NOT NULL,
+    genero CHAR(1) NOT NULL
+);
+```
+
+### 6. Tabla VOTACION
+
+La tabla VOTACION almacena información sobre las votaciones realizadas por los ciudadanos. Cada votación tiene un identificador único (id_voto), está asociada a una mesa de votación (id_mesa) y a un ciudadano (dpi_ciudadano) utilizando claves foráneas (FOREIGN KEY), y también registra la fecha y hora (fecha_hora) en que se realizó la votación.
+
+```sql
+CREATE TABLE VOTACION (
+    id_voto INTEGER NOT NULL PRIMARY KEY,
+    id_mesa INTEGER NOT NULL,
+    dpi_ciudadano BIGINT NOT NULL,
+    fecha_hora TIMESTAMP NOT NULL,
+    FOREIGN KEY (id_mesa) REFERENCES MESA (id_mesa),
+    FOREIGN KEY (dpi_ciudadano) REFERENCES CIUDADANO (dpi_ciudadano)
+);
+```
+
+### 7. Tabla CANDIDATO
+
+La tabla CANDIDATO almacena información sobre los candidatos a cargos electorales. Cada candidato tiene un identificador único (id_candidato), está asociado a un cargo electoral (id_cargo) y a un partido político (id_partido) utilizando claves foráneas (FOREIGN KEY), y también registra el nombre (nombre) del candidato y su fecha de nacimiento (fecha_nacimiento).
+
+```sql
+CREATE TABLE CANDIDATO (
+    id_candidato INTEGER NOT NULL PRIMARY KEY,
+    id_cargo INTEGER NOT NULL,
+    id_partido INTEGER NOT NULL,
+    nombre VARCHAR(25) NOT NULL,
+    fecha_nacimiento DATE NOT NULL,
+    FOREIGN KEY (id_cargo) REFERENCES CARGO (id_cargo),
+    FOREIGN KEY (id_partido) REFERENCES PARTIDO (id_partido)
+);
+```
+
+### 8. Tabla CANDIDATO_VOTADO
+
+La tabla CANDIDATO_VOTADO almacena información sobre los candidatos por los que los ciudadanos han votado en una elección específica. Cada registro en esta tabla tiene un identificador único (id_votado), está asociado a una votación (id_voto)
+
+```sql
+CREATE TABLE CANDIDATO_VOTADO(
+    id_votado INTEGER NOT NULL PRIMARY KEY,
+    id_voto INTEGER NOT NULL,
+    id_candidato INTEGER NOT NULL,
+    FOREIGN KEY (id_voto) REFERENCES VOTACION (id_voto),
+    FOREIGN KEY (id_candidato) REFERENCES CANDIDATO (id_candidato)
+);
+```
+
+## Establecimiento de Conexión a MySQL en Python
+
+```python
+import mysql.connector
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+def obtener_conexion():
+    return mysql.connector.connect(
+        host=os.environ.get('DATABASE_HOST'),
+        user=os.environ.get('DATABASE_USER'),
+        password=os.environ.get('DATABASE_PASSWORD'),
+        db=os.environ.get('DATABASE_NAME'),
+        port=os.environ.get('DATABASE_PORT')
+    )
+```
+
+El código Python mostrado anteriormente se encarga de establecer una conexión a una base de datos MySQL utilizando la biblioteca `mysql.connector`. Además, utiliza la biblioteca `dotenv` para cargar las variables de entorno desde un archivo `.env`.
+
+### Importación de Módulos:
+
+- Se importa el módulo `mysql.connector` para interactuar con la base de datos MySQL.
+- Se importa el módulo `os` para trabajar con variables de entorno y el sistema operativo.
+- Se importa la función `load_dotenv` del módulo `dotenv` para cargar variables de entorno desde un archivo `.env`.
+
+### Carga de Variables de Entorno:
+
+- Se utiliza `load_dotenv()` para cargar las variables de entorno desde un archivo `.env`. Esto es útil para mantener de forma segura información sensible como las credenciales de la base de datos.
+
+### Función `obtener_conexion()`:
+
+- Se define una función llamada `obtener_conexion()` que se encarga de establecer una conexión a la base de datos MySQL.
+- La función utiliza los valores de las variables de entorno para configurar la conexión, incluyendo el host, usuario, contraseña, nombre de la base de datos y puerto.
+- La función retorna la conexión establecida.
+
+## Server.py
+
+### Función MostrarTablas()
+Esta función se encarga de mostrar la lista de tablas disponibles en la base de datos. Utiliza la consulta SHOW TABLES; para obtener el listado de tablas y lo retorna como una lista.
+
+```python
+@app.route('/mostrartablas', methods=['GET'])
+def MostrarTablas():
+    try:
+        datos = controlador.MostrarTablas()
+        if datos is not None:
+            response = jsonify({'status':'success', 'Votaciones':'DATOS OBTENIDOS EXITOSAMENTE', 'datos':datos})
+            response.status_code = 200
+            return response 
+        else:
+            response = jsonify({'status':'error','Votaciones': 'ERROR EN LA OBTENCION DE TABLAS','datos':datos})
+            response.status_code = 500
+            return response
+    except:
+        response = jsonify({'status':'error','Votaciones': 'ERROR DE COMUNICACION','datos':None})
+        response.status_code = 500
+        return response
+
+```
+
+### Función LimpiarTablas()
+La función LimpiarTablas() se encarga de eliminar todos los registros de las tablas de la base de datos en un orden específico. Primero, define el orden en el que se desean eliminar las tablas y luego ejecuta una instrucción DELETE FROM para borrar todos los registros de cada tabla. Finalmente, confirma los cambios en la base de datos.
+
+```python
+@app.route('/limpiartablas')
+def LimpiarTablas():
+    try:
+        controlador.LimpiarTablas()
+        response = jsonify({'status':'success', 'Votaciones':'LAS TABLAS SE LIMPIARON CORRECTAMENTE'})
+        response.status_code = 200
+        return response 
+    except:
+        response = jsonify({'status':'error','Votaciones': 'ERROR AL LIMPIAR LAS TABLAS'})
+        response.status_code = 500
+        return response
+```
+
+### Función EliminarTablas()
+EliminarTablas() tiene la función de eliminar completamente las tablas de la base de datos. Al igual que la función anterior, define el orden en el que se desean eliminar las tablas y ejecuta la instrucción DROP TABLE IF EXISTS para eliminar cada tabla. Luego, confirma los cambios en la base de datos.
+
+```python
+@app.route('/eliminartablas')
+def EliminarTablas():
+    try:
+        controlador.EliminarTablas()
+        response = jsonify({'status':'success', 'Votaciones':'TABLAS ELIMINADAS EXITOSAMENTE'})
+        response.status_code = 200
+        return response 
+    except:
+        response = jsonify({'status':'error','Votaciones': 'ERROR AL ELIMINAR LAS TABLAS'})
+        response.status_code = 500
+        return response
+```
+
+### Función CrearTablas()
+CrearTablas() se encarga de crear todas las tablas necesarias en la base de datos si no existen previamente. Define las instrucciones CREATE TABLE para cada tabla en el orden adecuado y las ejecuta en la base de datos. Luego, confirma los cambios.
+
+```python
+@app.route('/creartablas')
+def CrearTablas():
+    try:
+        controlador.CrearTablas()
+        response = jsonify({'status':'success', 'Votaciones':'TABLAS CREADAS EXITOSAMENTE'})
+        response.status_code = 200
+        return response 
+    except:
+        response = jsonify({'status':'error','Votaciones': 'ERROR AL CREAR LAS TABLAS'})
+        response.status_code = 500
+        return response
+```
+
+## Controlador.py
+
+### Importación de Librerías y Módulos:
+
+- La aplicación utiliza Flask para crear la API web.
+- Se importa la función `obtener_conexion` del módulo `conexion`, que se utiliza para establecer una conexión a la base de datos MySQL.
+
+```python
 from conexion import obtener_conexion
+conexion = obtener_conexion()
+```
 
+### Funciones para Operaciones en la Base de Datos:
 
+- `MostrarTablas()`: Esta función obtiene una lista de tablas disponibles en la base de datos mediante la consulta `SHOW TABLES;`. Luego, devuelve esa lista.
+
+```python
 def MostrarTablas():
     try:
         conexion = obtener_conexion()
@@ -15,7 +276,11 @@ def MostrarTablas():
         return None
     finally:
         conexion.close()
+```
 
+- `LimpiarTablas()`: Elimina todos los registros de las tablas en un orden específico definido en `tablas_a_eliminar`. Para cada tabla, ejecuta la instrucción `DELETE FROM`.
+
+```python
 def LimpiarTablas():
     try:
         conexion = obtener_conexion()
@@ -45,7 +310,11 @@ def LimpiarTablas():
         print(f"Error al limpiar las tablas: {str(e)}")
     finally:
         conexion.close()
+```
 
+- `EliminarTablas()`: Elimina completamente todas las tablas de la base de datos en el mismo orden definido en `tablas_a_eliminar`. Utiliza `DROP TABLE IF EXISTS`.
+
+```python
 def EliminarTablas():
     try:
         conexion = obtener_conexion()
@@ -75,7 +344,11 @@ def EliminarTablas():
         print(f"Error al eliminar las tablas: {str(e)}")
     finally:
         conexion.close()
+```
 
+- `CrearTablas()`: Crea las tablas necesarias en la base de datos si no existen previamente. Define las instrucciones `CREATE TABLE` para cada tabla y las ejecuta.
+
+```python
 def CrearTablas():
     try:
         conexion = obtener_conexion()
@@ -163,104 +436,15 @@ def CrearTablas():
         print(f"Error al crear las tablas: {str(e)}")
     finally:
         conexion.close()
+```
 
-def InsertarCargo(id_cargo, cargo):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO CARGO (id_cargo, cargo) VALUES (%s, %s);"
-            cursor.execute(query, (id_cargo, cargo))
-            conexion.commit()
-    except:
-        conexion.rollback() 
-    finally:
-        conexion.close()
+- Otras funciones como `InsertarCargo`, `InsertarPartido`, `InsertarDepartamento`, `InsertarMesa`, `InsertarCiudadano`, `InsertarVotacion`, `InsertarCandidato`, `InsertarCandidatoVotado` se utilizan para insertar registros en diferentes tablas de la base de datos.
 
-def InsertarPartido(id_partido, nombre_partido, siglas, fundacion):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO PARTIDO (id_partido, nombre_partido, siglas, fundacion) VALUES (%s, %s, %s, %s);"
-            cursor.execute(query, (id_partido, nombre_partido, siglas, fundacion))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
+### Funciones para Consultas de Datos:
 
-def InsertarDepartamento(id_departamento, nombre):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO DEPARTAMENTO (id_departamento, nombre) VALUES (%s, %s);"
-            cursor.execute(query, (id_departamento, nombre))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
+- `mostrar_candidatos_presidente_vicepresidente()`: Realiza una consulta SQL para mostrar los nombres de los candidatos a presidente y vicepresidente junto con el nombre del partido al que pertenecen.
 
-def InsertarMesa(id_mesa, id_departamento):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO MESA (id_mesa, id_departamento) VALUES (%s, %s);"
-            cursor.execute(query, (id_mesa, id_departamento))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
-
-def InsertarCiudadano(dpi_ciudadano, nombre, apellido, direccion, telefono, edad, genero):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO CIUDADANO (dpi_ciudadano, nombre, apellido, direccion, telefono, edad, genero) VALUES (%s, %s, %s, %s, %s, %s, %s);"
-            cursor.execute(query, (dpi_ciudadano, nombre, apellido, direccion, telefono, edad, genero))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
-
-def InsertarVotacion(id_voto, id_mesa, dpi_ciudadano, fecha_hora):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO VOTACION (id_voto, id_mesa, dpi_ciudadano, fecha_hora) VALUES (%s, %s, %s, %s);"
-            cursor.execute(query, (id_voto, id_mesa, dpi_ciudadano, fecha_hora))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
-
-def InsertarCandidato(id_candidato, nombre, fecha_nacimiento, id_partido, id_cargo):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO CANDIDATO (id_candidato, id_cargo, id_partido, nombre, fecha_nacimiento) VALUES (%s, %s, %s, %s, %s);"
-            cursor.execute(query, (id_candidato, id_cargo, id_partido, nombre, fecha_nacimiento))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
-
-def InsertarCandidatoVotado(id_votado, id_voto, id_candidato):
-    try:
-        conexion = obtener_conexion()
-        with conexion.cursor() as cursor:
-            query = "INSERT INTO CANDIDATO_VOTADO (id_votado, id_voto, id_candidato) VALUES (%s, %s, %s);"
-            cursor.execute(query, (id_votado, id_voto, id_candidato))
-            conexion.commit()
-    except:
-        conexion.rollback()
-    finally:
-        conexion.close()
-
-
+```python
 def mostrar_candidatos_presidente_vicepresidente():
     try:
         conexion = obtener_conexion()
@@ -285,7 +469,11 @@ def mostrar_candidatos_presidente_vicepresidente():
         return None
     finally:
         conexion.close()
+```
 
+- `mostrar_candidatos_diputados()`: Consulta la cantidad de candidatos por partido que se postulan para cargos de diputados.
+
+```python
 def mostrar_candidatos_diputados():
     try:
         conexion = obtener_conexion()
@@ -306,7 +494,11 @@ def mostrar_candidatos_diputados():
         return None
     finally:
         conexion.close()
+```
 
+- `mostrar_candidatos_alcalde()`: Muestra los candidatos a alcalde junto con el nombre de su partido.
+
+```python
 def mostrar_candidatos_alcalde():
     try:
         conexion = obtener_conexion()
@@ -325,7 +517,11 @@ def mostrar_candidatos_alcalde():
         return None
     finally:
         conexion.close()
+```
 
+- `mostrar_candidatos_por_partido()`: Calcula y muestra la cantidad de candidatos por partido en diferentes cargos.
+
+```python
 def mostrar_candidatos_por_partido():
     try:
         conexion = obtener_conexion()
@@ -357,7 +553,11 @@ def mostrar_candidatos_por_partido():
         return None
     finally:
         conexion.close()
+```
 
+- `votaciones_por_departamento()`: Consulta la cantidad de votaciones por departamento.
+
+```python
 def votaciones_por_departamento():
     try:
         conexion = obtener_conexion()
@@ -386,7 +586,11 @@ def votaciones_por_departamento():
         return None
     finally:
         conexion.close()
+```
 
+- `cantidad_votos_nulos()`: Obtiene la cantidad de votos nulos.
+
+```python
 def cantidad_votos_nulos():
     try:
         conexion = obtener_conexion()
@@ -404,7 +608,11 @@ def cantidad_votos_nulos():
         return None
     finally:
         conexion.close()
+```
 
+- `Top10EdadCiudadanos()`: Muestra los 10 ciudadanos más jóvenes que han votado.
+
+```python
 def Top10EdadCiudadanos():
     try:
         conexion = obtener_conexion()
@@ -432,7 +640,11 @@ def Top10EdadCiudadanos():
         return None
     finally:
         conexion.close()
+```
 
+- `Top10CandidatosMasVotadosPresidenteVicepresidente()`: Muestra los 10 candidatos más votados para presidente y vicepresidente.
+
+```python
 def Top10CandidatosMasVotadosPresidenteVicepresidente():
     try:
         conexion = obtener_conexion()
@@ -453,7 +665,11 @@ def Top10CandidatosMasVotadosPresidenteVicepresidente():
         return None
     finally:
         conexion.close()
+```
 
+- `Top5MesasMasFrecuentadas()`: Muestra las 5 mesas de votación más frecuentadas.
+
+```python
 def Top5MesasMasFrecuentadas():
     try:
         conexion = obtener_conexion()
@@ -473,7 +689,11 @@ def Top5MesasMasFrecuentadas():
         return None
     finally:
         conexion.close()
+```
 
+- `Top5HoraMasConcurrida()`: Indica las 5 horas más concurridas en las votaciones.
+
+```python
 def Top5HoraMasConcurrida():
     try:
         conexion = obtener_conexion()
@@ -492,7 +712,11 @@ def Top5HoraMasConcurrida():
         return None
     finally:
         conexion.close()
+```
 
+- `CantidadVotosPorGenero()`: Consulta la cantidad de votos por género.
+
+```python
 def CantidadVotosPorGenero():
     try:
         conexion = obtener_conexion()
@@ -510,3 +734,4 @@ def CantidadVotosPorGenero():
         return None
     finally:
         conexion.close()
+```
